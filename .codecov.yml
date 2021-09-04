@@ -30,7 +30,3 @@ flags:
     paths:
       - Client
     carryforward: true
-  Server:
-    paths:
-      - Server
-    carryforward: true

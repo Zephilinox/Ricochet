@@ -28,12 +28,6 @@ jobs:
             library_caps: "CLIENT",
             library_lower: "client",
           }
-        - {
-            name: "server-lint",
-            library_title: "Server",
-            library_caps: "SERVER",
-            library_lower: "server",
-          }
     steps:
       - uses: actions/checkout@v2
       
