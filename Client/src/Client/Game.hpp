@@ -10,6 +10,8 @@
 #include <Core/Raytrace/Scene.hpp>
 #include <Core/Raytrace/Frame.hpp>
 #include <Core/Raytrace/Camera.hpp>
+#include <Core/Raytrace/Shape/Shape.hpp>
+#include <Core/Raytrace/Material/Material.hpp>
 #include <Core/Texture/TextureGL.hpp>
 #include <threadpool/threadpool.hpp>
 
@@ -78,9 +80,14 @@ private:
     std::mutex super_cool_mutex2;
     std::atomic<float> percentage = 0.0f;
     std::size_t max_samples = 1;
-    std::atomic<std::size_t> current_samples = 0;
+    std::atomic<int> current_samples = 0;
     std::thread raytracer_thread;
     std::atomic<bool> raytracing = true;
+
+    core::Sphere sphere1;
+    core::Sphere sphere2;
+    core::Sphere sphere3;
+    core::Sphere sphere4;
 };
 
 } // namespace rico::client

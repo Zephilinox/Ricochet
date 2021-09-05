@@ -15,8 +15,6 @@
 
 #include <Core/Window/WindowSDL.hpp>
 #include <Core/IMGUI/IMGUI_SDL_GL.hpp>
-#include <Core/Raytrace/Shape/Shape.hpp>
-#include <Core/Raytrace/Material/Material.hpp>
 
 #include <cstring> //memcpy for SDL
 #include <SDL.h>
@@ -194,35 +192,39 @@ int Game::run()
     //metal->fuzz = 0.1f;
 
     {
-        auto sphere = std::make_unique<core::Sphere>();
-        sphere->center = glm::highp_dvec3(0.0f, -0.3f, -1.5f);
-        sphere->radius = 0.7f;
-        sphere->colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
-        sphere->material = metal.get();
+        sphere1.center = glm::highp_dvec3(0.0f, -0.3f, -1.5f);
+        sphere1.radius = 0.7f;
+        sphere1.colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
+        sphere1.material = metal.get();
+        
+        auto sphere = std::make_unique<core::Sphere>(sphere1);
         scene.hitables.emplace_back(std::move(sphere));
     }
     {
-        auto sphere = std::make_unique<core::Sphere>();
-        sphere->center = glm::highp_dvec3(-1.0f, -0.2f, -1.0f);
-        sphere->radius = 0.5f;
-        sphere->colour = glm::highp_dvec3(0.0f, 1.0f, 0.4f);
-        sphere->material = diffuse.get();
+        sphere2.center = glm::highp_dvec3(-1.0f, -0.2f, -1.0f);
+        sphere2.radius = 0.5f;
+        sphere2.colour = glm::highp_dvec3(0.0f, 1.0f, 0.4f);
+        sphere2.material = diffuse.get();
+
+        auto sphere = std::make_unique<core::Sphere>(sphere2);
         scene.hitables.emplace_back(std::move(sphere));
     }
     {
-        auto sphere = std::make_unique<core::Sphere>();
-        sphere->center = glm::highp_dvec3(1.0f, -0.1f, -1.0f);
-        sphere->radius = 0.5f;
-        sphere->colour = glm::highp_dvec3(1.0f, 0.4f, 0.0f);
-        sphere->material = diffuse.get();
+        sphere3.center = glm::highp_dvec3(1.0f, -0.1f, -1.0f);
+        sphere3.radius = 0.5f;
+        sphere3.colour = glm::highp_dvec3(1.0f, 0.4f, 0.0f);
+        sphere3.material = diffuse.get();
+
+        auto sphere = std::make_unique<core::Sphere>(sphere3);
         scene.hitables.emplace_back(std::move(sphere));
     }
     {
-        auto sphere = std::make_unique<core::Sphere>();
-        sphere->center = glm::highp_dvec3(0.8f, -0.1f, -0.9f);
-        sphere->radius = 0.3f;
-        sphere->colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
-        sphere->material = metal.get();
+        sphere4.center = glm::highp_dvec3(0.8f, -0.1f, -0.9f);
+        sphere4.radius = 0.3f;
+        sphere4.colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
+        sphere4.material = metal.get();
+
+        auto sphere = std::make_unique<core::Sphere>(sphere4);
         scene.hitables.emplace_back(std::move(sphere));
     }
     {
@@ -295,6 +297,47 @@ void Game::update()
     ImGui::Begin(fmt::format("Raytrace {} samples###1", current_samples).c_str());
     ImGui::Image((void*)(intptr_t)texture->getOpenglTextureID(), ImVec2(texture->getWidth(), texture->getHeight()));
     ImGui::End();
+
+    double zero = 0.0f;
+    double one = 1.0f;
+    double negative_ten = -10.0f;
+    double positive_ten = 10.0f;
+    ImGui::Begin("Settings");
+    ImGui::Text("Sphere 1");
+    ImGui::SliderScalarN("Colour##sphere1c", ImGuiDataType_Double, &sphere1.colour.r, 3, &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalarN("Position##sphere1p", ImGuiDataType_Double, &sphere1.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalar("Radius##sphere1r", ImGuiDataType_Double, &sphere1.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::Text("Sphere 2");
+    ImGui::SliderScalarN("Colour##sphere2c", ImGuiDataType_Double, &sphere2.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalarN("Position##sphere2p", ImGuiDataType_Double, &sphere2.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalar("Radius##sphere2r", ImGuiDataType_Double, &sphere2.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::Text("Sphere 3");
+    ImGui::SliderScalarN("Colour##sphere3c", ImGuiDataType_Double, &sphere3.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalarN("Position##sphere3p", ImGuiDataType_Double, &sphere3.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalar("Radius##sphere3r", ImGuiDataType_Double, &sphere3.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::Text("Sphere 4");
+    ImGui::SliderScalarN("Colour##sphere4c", ImGuiDataType_Double, &sphere4.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalarN("Position##sphere4p", ImGuiDataType_Double, &sphere4.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    ImGui::SliderScalar("Radius##sphere4r", ImGuiDataType_Double, &sphere4.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    if (ImGui::Button("Update"))
+    {
+        std::scoped_lock lock(super_cool_mutex2);
+        pool.wait_all();
+
+        for (int i = 0; i < update_frame.pixels.size(); ++i)
+        {
+            update_frame.pixels[i] = {0.0f, 0.0f, 0.0f};
+        }
+
+        //raytrace thread will ++ this, so it will be 0 for a fully black frame, which is correct
+        current_samples = -1;
+
+        static_cast<core::Sphere&>(*scene.hitables[0]) = sphere1;
+        static_cast<core::Sphere&>(*scene.hitables[1]) = sphere2;
+        static_cast<core::Sphere&>(*scene.hitables[2]) = sphere3;
+        static_cast<core::Sphere&>(*scene.hitables[3]) = sphere4;
+    }
+    ImGui::End();
 }
 
 void Game::render()
@@ -326,11 +369,14 @@ void Game::render()
         texture->update([&](std::vector<core::Pixel>& pixels) {
             std::scoped_lock lock(super_cool_mutex2);
             auto frame_copy = render_frame;
-            for (std::size_t i = 0; i < frame_copy.pixels.size(); ++i)
+            if (current_samples > 0)
             {
-                frame_copy.pixels[i].r /= static_cast<float>(current_samples);
-                frame_copy.pixels[i].g /= static_cast<float>(current_samples);
-                frame_copy.pixels[i].b /= static_cast<float>(current_samples);
+                for (std::size_t i = 0; i < frame_copy.pixels.size(); ++i)
+                {
+                    frame_copy.pixels[i].r /= static_cast<float>(current_samples);
+                    frame_copy.pixels[i].g /= static_cast<float>(current_samples);
+                    frame_copy.pixels[i].b /= static_cast<float>(current_samples);
+                }
             }
             frame_copy.toPixels(pixels);
         });
@@ -379,7 +425,12 @@ void Game::raytrace_chunk(std::size_t start, std::size_t end)
 
 void Game::raytrace()
 {
-    const auto max_chunks = 100;
+    //the higher the max chunks, the more overhead there is with locks, etc. 
+    //but if it's too low, then some of the threads could be idling waiting for some expensive chunks to be raytraced
+    //so we do a multiple of the thread count, so that by the time it gets to the last "round" of active threads
+    // the work should be small enough that the other threads don't idle for very long
+    //I could have the other threads start raytracing the next sample if I wanted to, but that makes all of this more complicated
+    const auto max_chunks = 10 * pool.thread_count();
     const auto chunk = update_frame.pixels.size() / max_chunks;
     std::vector<std::pair<int, int>> chunks;
     for (int i = 0; i < max_chunks; ++i)
