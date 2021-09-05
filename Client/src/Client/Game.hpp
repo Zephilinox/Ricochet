@@ -11,6 +11,7 @@
 #include <Core/Raytrace/Frame.hpp>
 #include <Core/Raytrace/Camera.hpp>
 #include <Core/Texture/TextureGL.hpp>
+#include <threadpool/threadpool.hpp>
 
 //STD
 #include <array>
@@ -40,6 +41,9 @@ public:
     void render();
 
 private:
+    void raytrace_chunk(std::size_t start, std::size_t end);
+    void raytrace();
+
     std::unique_ptr<core::Window> window;
     core::WindowSDL* window_sdl = nullptr; //todo: not needed when we have proper abstractions everywhere
     void* glc;                             //todo: hide in renderer?
@@ -65,9 +69,18 @@ private:
 
     // Raytracing
     core::Camera camera;
-    core::Frame frame;
+    core::Frame render_frame;
+    core::Frame update_frame;
     core::Scene scene;
     std::unique_ptr<core::TextureGL> texture;
+    zx::threadpool<> pool;
+    std::mutex super_cool_mutex;
+    std::mutex super_cool_mutex2;
+    std::atomic<float> percentage = 0.0f;
+    std::size_t max_samples = 1;
+    std::atomic<std::size_t> current_samples = 0;
+    std::thread raytracer_thread;
+    std::atomic<bool> raytracing = true;
 };
 
 } // namespace rico::client

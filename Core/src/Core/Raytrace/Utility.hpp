@@ -14,6 +14,10 @@ namespace core
 
 inline glm::highp_dvec3 random_position_on_unit_sphere()
 {
+    auto rand_double = []() {
+        return (static_cast<double>(std::rand() % 20000) / 10000.0f) - 1.0f;
+    };
+
     /*auto magic = [](glm::vec2 O) {
         const double a = 2.0 * O.x - 1.0;
         const double b = 2.0 * O.y - 1.0;
@@ -31,14 +35,14 @@ inline glm::highp_dvec3 random_position_on_unit_sphere()
 
     glm::highp_dvec3 position{ 0.0, 0.0, 0.0 };
     auto magic_vec2 = magic(glm::vec2{
-        static_cast<double>(std::rand() % 100000) / 100000.0f,
-        static_cast<double>(std::rand() % 100000) / 100000.0f
+        rand_double(),
+        rand_double()
     });
 
     position = glm::vec3{
         magic_vec2.x,
         magic_vec2.y,
-        1.0 - std::sqrt((magic_vec2.x * magic_vec2.x) + (magic_vec2.y * magic_vec2.y))
+        std::sqrt((magic_vec2.x * magic_vec2.x) + (magic_vec2.y * magic_vec2.y))
     };
     return position;*/
     glm::highp_dvec3 position{ 0.0, 0.0, 0.0 };
@@ -46,10 +50,6 @@ inline glm::highp_dvec3 random_position_on_unit_sphere()
     while (true)
     {
         //todo
-        auto rand_double = []() {
-            return (static_cast<double>(std::rand() % 20000) / 10000.0f) - 1.0f;
-        };
-
         position = glm::highp_dvec3{ rand_double(), rand_double(), rand_double() };
         if (glm::length2(position) < 1.0)
             break;

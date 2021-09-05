@@ -22,11 +22,14 @@
 #include <SDL.h>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
+#include <fmt/format.h>
 
 using namespace rico::client;
 
 //STD
 #include <fstream>
+#include <algorithm>
+#include <random>
 
 int Game::add(int a, int b)
 {
@@ -68,7 +71,9 @@ inline glm::highp_dvec3 cast_ray(const core::Ray& ray, const core::Scene& scene,
 }
 
 Game::Game()
-    : frame(camera.width, camera.height)
+    : render_frame(camera.width, camera.height)
+    , update_frame(camera.width, camera.height)
+    , pool(std::max(static_cast<int>(std::thread::hardware_concurrency()) - 1, 1)) // leave 1 thread for us
 {
     //todo: hide somewhere, must be done before anything SDL related
     SDL_Init(SDL_INIT_VIDEO);
@@ -163,13 +168,17 @@ Game::Game()
 
     texture = std::make_unique<core::TextureGL>();
     std::vector<core::Pixel> pixels;
-    pixels.resize(frame.pixels_width * frame.pixels_height);
-    texture->load(pixels, frame.pixels_width, frame.pixels_height);
+    pixels.resize(render_frame.pixels_width * render_frame.pixels_height);
+    texture->load(pixels, render_frame.pixels_width, render_frame.pixels_height);
     magic_function();
 }
 
 Game::~Game()
 {
+    raytracing = false;
+    if (raytracer_thread.joinable())
+        raytracer_thread.join();
+
     imgui.reset();
 
     SDL_GL_DeleteContext(glc); //todo: let renderer do it
@@ -181,85 +190,54 @@ Game::~Game()
 int Game::run()
 {
     auto diffuse = std::make_unique<core::Diffuse>();
-    auto sphere = std::make_unique<core::Sphere>();
-    sphere->center = glm::highp_dvec3(0.0f, 0.0f, -1.0f);
-    sphere->radius = 0.5f;
-    sphere->colour = glm::highp_dvec3(0.8f, 0.8f, 0.8f);
-    sphere->material = diffuse.get();
-    scene.hitables.emplace_back(std::move(sphere));
-    auto sphere2 = std::make_unique<core::Sphere>();
-    sphere2->center = glm::highp_dvec3(0.0f, -100.5f, -1.0f);
-    sphere2->radius = 100.0f;
-    sphere2->colour = glm::highp_dvec3(0.8f, 0.8f, 0.8f);
-    sphere2->material = diffuse.get();
-    scene.hitables.emplace_back(std::move(sphere2));
+    auto metal = std::make_unique<core::Metal>();
+    //metal->fuzz = 0.1f;
 
-    std::vector<std::thread> threads;
-    std::mutex super_cool_mutex;
-    auto lambda = [&](std::size_t thread_id, std::size_t start, std::size_t end) {
-        std::vector<glm::vec3> our_pixels;
-        our_pixels.resize(end - start);
-
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        for (std::size_t i = start; i < end; ++i)
-        {        
-		    glm::highp_dvec3 colour(0.0, 0.0, 0.0);
-            constexpr auto max_samples = 512; //todo: use zx::threadpool and multithread the samples
-            for (std::size_t sample = 0; sample < max_samples; ++sample)
-            {
-                const float rand_u = static_cast<float>(std::rand() % 10000) / 10000.0f;
-                const float rand_v = static_cast<float>(std::rand() % 10000) / 10000.0f;
-
-                const double x = i % frame.pixels_width;
-                const double y = i / frame.pixels_width;
-                if (y == 2)
-                    int aihfiahfas = 0;
-                const double u = (x + rand_u) / static_cast<double>(frame.pixels_width - 1);
-                const double v = 1.0 - ((y + rand_v) / static_cast<double>(frame.pixels_height - 1));
-                const core::Ray ray{
-                    camera.origin,
-                    camera.lower_left_corner + (u * camera.horizontal) + (v * camera.vertical) - camera.origin
-                };
-
-                const auto sample_colour = cast_ray(ray, scene, 0);
-                if (sample_colour.r != -1.0)
-                    int hajfhasf = 0;
-            
-                if (sample_colour == glm::highp_dvec3(1.0))
-                    int aisdhfahsf = 0;
-                colour += sample_colour;
-            }
-            our_pixels[i - start] = colour / static_cast<double>(max_samples);
-        }
-
-        {
-            std::scoped_lock lock(super_cool_mutex);
-            for (std::size_t i = 0; i < our_pixels.size(); ++i)
-            {
-                frame.pixels[i + start] = our_pixels[i];
-            }
-            spdlog::info("thread done ({}%)", (static_cast<float>(end - start) / static_cast<float>(frame.pixels.size())) * 100.0f);
-        }
-    };
-
-    for (int i = 0; i < (std::thread::hardware_concurrency() * 2); ++i)
     {
-        const auto chunk = frame.pixels.size() / (std::thread::hardware_concurrency() * 2);
-        if (i == (std::thread::hardware_concurrency() * 2) - 1)
-            threads.emplace_back(lambda, i, chunk * i, frame.pixels.size());
-        else
-            threads.emplace_back(lambda, i, chunk * i, chunk * (i + 1));
+        auto sphere = std::make_unique<core::Sphere>();
+        sphere->center = glm::highp_dvec3(0.0f, -0.3f, -1.5f);
+        sphere->radius = 0.7f;
+        sphere->colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
+        sphere->material = metal.get();
+        scene.hitables.emplace_back(std::move(sphere));
     }
-
-    for (auto& t : threads)
     {
-        //t.join();
+        auto sphere = std::make_unique<core::Sphere>();
+        sphere->center = glm::highp_dvec3(-1.0f, -0.2f, -1.0f);
+        sphere->radius = 0.5f;
+        sphere->colour = glm::highp_dvec3(0.0f, 1.0f, 0.4f);
+        sphere->material = diffuse.get();
+        scene.hitables.emplace_back(std::move(sphere));
+    }
+    {
+        auto sphere = std::make_unique<core::Sphere>();
+        sphere->center = glm::highp_dvec3(1.0f, -0.1f, -1.0f);
+        sphere->radius = 0.5f;
+        sphere->colour = glm::highp_dvec3(1.0f, 0.4f, 0.0f);
+        sphere->material = diffuse.get();
+        scene.hitables.emplace_back(std::move(sphere));
+    }
+    {
+        auto sphere = std::make_unique<core::Sphere>();
+        sphere->center = glm::highp_dvec3(0.8f, -0.1f, -0.9f);
+        sphere->radius = 0.3f;
+        sphere->colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
+        sphere->material = metal.get();
+        scene.hitables.emplace_back(std::move(sphere));
+    }
+    {
+        auto sphere = std::make_unique<core::Sphere>();
+        sphere->center = glm::highp_dvec3(0.0f, -100.5f, -1.0f);
+        sphere->radius = 100.0f;
+        sphere->colour = glm::highp_dvec3(1.0f, 1.0f, 1.0f);
+        sphere->material = diffuse.get();
+        scene.hitables.emplace_back(std::move(sphere));
     }
 
     magic_function();
+    raytracer_thread = std::thread(&Game::raytrace, this);
     while (window->isOpen())
     {
-        int i2 = 0;
         magic_function();
         events();
         magic_function();
@@ -267,8 +245,11 @@ int Game::run()
         magic_function();
         render();
         magic_function();
-        int i = 0;
     }
+
+    raytracing = false;
+    if (raytracer_thread.joinable())
+        raytracer_thread.join();
 
     return 0;
 }
@@ -302,9 +283,6 @@ void Game::update()
 {
     // IMGUI needs to know when the frame started
     imgui->update(*window);
-
-    // Raytrace
-    //todo
     
     // UI
     if (show_demo_window)
@@ -314,7 +292,7 @@ void Game::update()
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0 / static_cast<double>(ImGui::GetIO().Framerate), static_cast<double>(ImGui::GetIO().Framerate));
     ImGui::End();
 
-    ImGui::Begin("Raytrace");
+    ImGui::Begin(fmt::format("Raytrace {} samples###1", current_samples).c_str());
     ImGui::Image((void*)(intptr_t)texture->getOpenglTextureID(), ImVec2(texture->getWidth(), texture->getHeight()));
     ImGui::End();
 }
@@ -341,12 +319,22 @@ void Game::render()
 
     // Draw a triangle from the 3 vertices, underneath IMGUI
     //todo: renderer stuff innit
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    magic_function();
+    //glDrawArrays(GL_TRIANGLES, 0, 3);
+    //magic_function();
 
-    texture->update([&](std::vector<core::Pixel>& pixels) {
-        frame.toPixels(pixels);
-    });
+    {
+        texture->update([&](std::vector<core::Pixel>& pixels) {
+            std::scoped_lock lock(super_cool_mutex2);
+            auto frame_copy = render_frame;
+            for (std::size_t i = 0; i < frame_copy.pixels.size(); ++i)
+            {
+                frame_copy.pixels[i].r /= static_cast<float>(current_samples);
+                frame_copy.pixels[i].g /= static_cast<float>(current_samples);
+                frame_copy.pixels[i].b /= static_cast<float>(current_samples);
+            }
+            frame_copy.toPixels(pixels);
+        });
+    }
     magic_function();
 
     imgui->render();
@@ -355,4 +343,74 @@ void Game::render()
     //todo: seems like window should do this, but then it's GL specific? so renderer?
     SDL_GL_SwapWindow(window_sdl->getRawWindow());
     magic_function();
+}
+
+void Game::raytrace_chunk(std::size_t start, std::size_t end)
+{
+    std::vector<glm::vec3> our_pixels;
+    our_pixels.resize(end - start);
+
+    for (std::size_t i = start; i < end; ++i)
+    {
+        const float rand_u = static_cast<float>(std::rand() % 10000) / 10000.0f;
+        const float rand_v = static_cast<float>(std::rand() % 10000) / 10000.0f;
+
+        const double x = i % update_frame.pixels_width;
+        const double y = i / update_frame.pixels_width;
+        const double u = (x + rand_u) / static_cast<double>(update_frame.pixels_width - 1);
+        const double v = 1.0 - ((y + rand_v) / static_cast<double>(update_frame.pixels_height - 1));
+        const core::Ray ray{
+            camera.origin,
+            camera.lower_left_corner + (u * camera.horizontal) + (v * camera.vertical) - camera.origin
+        };
+
+        our_pixels[i - start] = cast_ray(ray, scene, 0);;
+    }
+
+    {
+        std::scoped_lock lock(super_cool_mutex);
+        for (std::size_t i = 0; i < our_pixels.size(); ++i)
+        {
+            update_frame.pixels[i + start] += our_pixels[i];
+        }
+        percentage += (static_cast<float>(end - start) / static_cast<float>(update_frame.pixels.size())) * 100.0f;
+    }
+}
+
+void Game::raytrace()
+{
+    const auto max_chunks = 100;
+    const auto chunk = update_frame.pixels.size() / max_chunks;
+    std::vector<std::pair<int, int>> chunks;
+    for (int i = 0; i < max_chunks; ++i)
+    {
+        if (i == max_chunks - 1)
+            chunks.push_back({chunk * i, update_frame.pixels.size()});
+        else
+            chunks.push_back({chunk * i, chunk * (i + 1)});
+    }
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    while (raytracing)
+    {
+        //randomise chunk order
+        std::shuffle(chunks.begin(), chunks.end(), g);
+
+        //submit chunks
+        for (std::size_t i = 0; i < chunks.size(); ++i)
+        {
+            pool.push_task([this, start = chunks[i].first, end = chunks[i].second]() {
+                raytrace_chunk(start, end);
+            });
+        }
+
+        //wait until all chunks are done, so we know we've finished a complete sample
+        pool.wait_all();
+
+        std::scoped_lock lock(super_cool_mutex2);
+        render_frame = update_frame;
+        current_samples++;
+    }
 }

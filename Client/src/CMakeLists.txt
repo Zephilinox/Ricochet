@@ -1,6 +1,7 @@
 include(ConfigureTarget)
 include(CompilerWarnings)
 include(FetchIMGUI)
+include(FetchThreadpool)
 
 add_library(client OBJECT
     "Client/Game.hpp"
@@ -8,7 +9,7 @@ add_library(client OBJECT
 )
 add_library(rico::client ALIAS client)
 
-target_link_libraries(client PUBLIC core::core)
+target_link_libraries(client PUBLIC core::core zx::threadpool)
 target_include_directories(client PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
