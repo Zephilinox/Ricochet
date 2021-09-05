@@ -4,15 +4,36 @@
 #include "Core/Window/WindowSDL.hpp"
 
 //LIBS
+#ifdef __EMSCRIPTEN__
+    #include <emscripten.h>
+
+    #define GL_GLEXT_PROTOTYPES 1
+    #include <SDL_opengles2.h>
+#else
+    #undef main
+    #include <glad/glad.h>
+#endif
+
 #include <cstring> //memcpy for SDL
 #include <SDL.h>
 #include <imgui.h>
 #include <backends/imgui_impl_sdl.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <spdlog/spdlog.h>
 
 //STD
 
 using namespace core;
+
+inline void magic_function()
+{
+    auto err = glGetError();
+    if (err != GL_NO_ERROR)
+    {
+        //spdlog::info("OpenGL error - {:x}", err);
+        int totes_important = 0;
+    }
+}
 
 IMGUI_SDL_GL::IMGUI_SDL_GL(const Window& window, void* sdl_gl_context)
     : IMGUI(type_v)
@@ -113,8 +134,11 @@ void IMGUI_SDL_GL::update(const Window& window)
 
 void IMGUI_SDL_GL::render()
 {
+    magic_function();
     ImGui::Render();
+    magic_function();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    magic_function();
 }
 
 ImGuiIO* IMGUI_SDL_GL::getRawIMGUI() const

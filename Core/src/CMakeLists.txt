@@ -29,6 +29,20 @@ add_library(core
     "Core/IMGUI/IMGUI.hpp"
     "Core/IMGUI/IMGUI_SDL_GL.hpp"
     "Core/IMGUI/IMGUI_SDL_GL.cpp"
+
+    "Core/Raytrace/Material/Material.hpp"
+    "Core/Raytrace/Material/Material.cpp"
+    "Core/Raytrace/Shape/Shape.hpp"
+    "Core/Raytrace/Shape/Shape.cpp"
+    "Core/Raytrace/Camera.hpp"
+    "Core/Raytrace/Hit.hpp"
+    "Core/Raytrace/Ray.hpp"
+    "Core/Raytrace/Scene.hpp"
+    "Core/Raytrace/Utility.hpp"
+    "Core/Raytrace/Frame.hpp"
+
+    "Core/Texture/TextureGL.hpp"
+    "Core/Texture/TextureGL.cpp"
 )
 add_library(core::core ALIAS core)
 

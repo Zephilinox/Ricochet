@@ -6,6 +6,11 @@
 #include <Core/Window/Window.hpp>
 #include <Core/Input/Input.hpp>
 #include <Core/IMGUI/IMGUI.hpp>
+#include <Core/Raytrace/Ray.hpp>
+#include <Core/Raytrace/Scene.hpp>
+#include <Core/Raytrace/Frame.hpp>
+#include <Core/Raytrace/Camera.hpp>
+#include <Core/Texture/TextureGL.hpp>
 
 //STD
 #include <array>
@@ -37,7 +42,7 @@ public:
 private:
     std::unique_ptr<core::Window> window;
     core::WindowSDL* window_sdl = nullptr; //todo: not needed when we have proper abstractions everywhere
-    void* glc;                                     //todo: hide in renderer?
+    void* glc;                             //todo: hide in renderer?
     core::Input input;
 
     //todo: remove once we have some IMGUI windows we can use instead, or maybe hide behind a special key
@@ -57,6 +62,12 @@ private:
                                  "}                                            \n";
 
     std::unique_ptr<core::IMGUI> imgui;
+
+    // Raytracing
+    core::Camera camera;
+    core::Frame frame;
+    core::Scene scene;
+    std::unique_ptr<core::TextureGL> texture;
 };
 
 } // namespace rico::client
