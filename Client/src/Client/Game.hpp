@@ -17,6 +17,7 @@
 
 //STD
 #include <array>
+#include <chrono>
 
 namespace core
 {
@@ -39,12 +40,15 @@ public:
     int run();
 
     void events();
-    void update();
+    void update(float dt);
     void render();
 
 private:
     void raytrace_chunk(std::size_t start, std::size_t end);
     void raytrace();
+
+    std::chrono::high_resolution_clock::time_point previous;
+    float delta;
 
     std::unique_ptr<core::Window> window;
     core::WindowSDL* window_sdl = nullptr; //todo: not needed when we have proper abstractions everywhere
@@ -83,11 +87,14 @@ private:
     std::atomic<int> current_samples = 0;
     std::thread raytracer_thread;
     std::atomic<bool> raytracing = true;
-
+    
+    core::Camera::Settings cam_settings;
     core::Sphere sphere1;
     core::Sphere sphere2;
     core::Sphere sphere3;
     core::Sphere sphere4;
+    bool skip = false;
+    bool dirty = false;
 };
 
 } // namespace rico::client

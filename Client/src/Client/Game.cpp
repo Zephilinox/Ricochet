@@ -53,8 +53,8 @@ inline glm::highp_dvec3 cast_ray(const core::Ray& ray, const core::Scene& scene,
     auto maybe_hit = scene.hit(ray, 0.00001, 999.9);
 	if (maybe_hit)
     {
-		if (depth >= 100)
-            return {0.0, 0.0, 0.0};
+		if (depth >= 50)
+            return maybe_hit->colour;
 
         auto maybe_bounce = maybe_hit->material->bounce(ray, 0.0001, 999.9, *maybe_hit);
 		if (maybe_bounce)
@@ -238,12 +238,15 @@ int Game::run()
 
     magic_function();
     raytracer_thread = std::thread(&Game::raytrace, this);
+    previous = std::chrono::high_resolution_clock::now();
     while (window->isOpen())
     {
         magic_function();
         events();
         magic_function();
-        update();
+        delta = std::chrono::duration_cast<std::chrono::duration<float, std::chrono::seconds::period>>(std::chrono::high_resolution_clock::now() - previous).count();
+        update(delta);
+        previous = std::chrono::high_resolution_clock::now();
         magic_function();
         render();
         magic_function();
@@ -264,8 +267,8 @@ void Game::events()
     while (window->poll(event))
     {
         auto consumed = imgui->process(event);
-        if (consumed)
-            continue;
+        //if (consumed)
+        //    continue;
 
         input.process(event);
         auto visitor = core::overload{
@@ -281,7 +284,7 @@ void Game::events()
     }
 }
 
-void Game::update()
+void Game::update(float dt)
 {
     // IMGUI needs to know when the frame started
     imgui->update(*window);
@@ -297,45 +300,96 @@ void Game::update()
     ImGui::Begin(fmt::format("Raytrace {} samples###1", current_samples).c_str());
     ImGui::Image((void*)(intptr_t)texture->getOpenglTextureID(), ImVec2(texture->getWidth(), texture->getHeight()));
     ImGui::End();
-
+    
+    double negative_five = -5.0f;
+    double negative_one = -1.0f;
     double zero = 0.0f;
     double one = 1.0f;
+    double five = 5.0f;
     double negative_ten = -10.0f;
     double positive_ten = 10.0f;
     ImGui::Begin("Settings");
+    ImGui::Text("Camera");
+    dirty = dirty || ImGui::SliderScalarN("Origin##camera_o", ImGuiDataType_Double, &cam_settings.origin.x, 3, &negative_five, &five, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
     ImGui::Text("Sphere 1");
-    ImGui::SliderScalarN("Colour##sphere1c", ImGuiDataType_Double, &sphere1.colour.r, 3, &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalarN("Position##sphere1p", ImGuiDataType_Double, &sphere1.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalar("Radius##sphere1r", ImGuiDataType_Double, &sphere1.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Colour##sphere1c", ImGuiDataType_Double, &sphere1.colour.r, 3, &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Position##sphere1p", ImGuiDataType_Double, &sphere1.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalar("Radius##sphere1r", ImGuiDataType_Double, &sphere1.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
     ImGui::Text("Sphere 2");
-    ImGui::SliderScalarN("Colour##sphere2c", ImGuiDataType_Double, &sphere2.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalarN("Position##sphere2p", ImGuiDataType_Double, &sphere2.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalar("Radius##sphere2r", ImGuiDataType_Double, &sphere2.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Colour##sphere2c", ImGuiDataType_Double, &sphere2.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Position##sphere2p", ImGuiDataType_Double, &sphere2.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalar("Radius##sphere2r", ImGuiDataType_Double, &sphere2.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
     ImGui::Text("Sphere 3");
-    ImGui::SliderScalarN("Colour##sphere3c", ImGuiDataType_Double, &sphere3.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalarN("Position##sphere3p", ImGuiDataType_Double, &sphere3.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalar("Radius##sphere3r", ImGuiDataType_Double, &sphere3.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Colour##sphere3c", ImGuiDataType_Double, &sphere3.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Position##sphere3p", ImGuiDataType_Double, &sphere3.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalar("Radius##sphere3r", ImGuiDataType_Double, &sphere3.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
     ImGui::Text("Sphere 4");
-    ImGui::SliderScalarN("Colour##sphere4c", ImGuiDataType_Double, &sphere4.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalarN("Position##sphere4p", ImGuiDataType_Double, &sphere4.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    ImGui::SliderScalar("Radius##sphere4r", ImGuiDataType_Double, &sphere4.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
-    if (ImGui::Button("Update"))
-    {
-        std::scoped_lock lock(super_cool_mutex2);
-        pool.wait_all();
+    dirty = dirty || ImGui::SliderScalarN("Colour##sphere4c", ImGuiDataType_Double, &sphere4.colour.r, 3,  &zero, &one, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalarN("Position##sphere4p", ImGuiDataType_Double, &sphere4.center.x, 3, &negative_ten, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::SliderScalar("Radius##sphere4r", ImGuiDataType_Double, &sphere4.radius, &zero, &positive_ten, "%.2f", ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
+    dirty = dirty || ImGui::Button("Update");
 
-        for (int i = 0; i < update_frame.pixels.size(); ++i)
+    if (input.isKeyDown(core::Key::W))
+    {
+        dirty = true;
+        cam_settings.origin.z -= 10.0f * dt;
+    }
+
+    if (input.isKeyDown(core::Key::S))
+    {
+        dirty = true;
+        cam_settings.origin.z += 10.0f * dt;
+    }
+
+    if (input.isKeyDown(core::Key::A))
+    {
+        dirty = true;
+        cam_settings.origin.x -= 10.0f * dt;
+    }
+
+    if (input.isKeyDown(core::Key::D))
+    {
+        dirty = true;
+        cam_settings.origin.x += 10.0f * dt;
+    }
+
+    if (input.isKeyDown(core::Key::Shift))
+    {
+        dirty = true;
+        cam_settings.origin.y += 10.0f * dt;
+    }
+    
+    if (input.isKeyDown(core::Key::Control))
+    {
+        dirty = true;
+        cam_settings.origin.y -= 10.0f * dt;
+    }
+
+    if (dirty)
+    {
         {
-            update_frame.pixels[i] = {0.0f, 0.0f, 0.0f};
+            dirty = false;
+            std::scoped_lock lock(super_cool_mutex2);
+            pool.wait_all();
+
+            for (int i = 0; i < update_frame.pixels.size(); ++i)
+            {
+                update_frame.pixels[i] = {0.0f, 0.0f, 0.0f};
+            }
+
+            current_samples = -1;
+
+            camera = core::Camera(cam_settings);
+            static_cast<core::Sphere&>(*scene.hitables[0]) = sphere1;
+            static_cast<core::Sphere&>(*scene.hitables[1]) = sphere2;
+            static_cast<core::Sphere&>(*scene.hitables[2]) = sphere3;
+            static_cast<core::Sphere&>(*scene.hitables[3]) = sphere4;
+            bool skip = true;
         }
 
-        //raytrace thread will ++ this, so it will be 0 for a fully black frame, which is correct
-        current_samples = -1;
-
-        static_cast<core::Sphere&>(*scene.hitables[0]) = sphere1;
-        static_cast<core::Sphere&>(*scene.hitables[1]) = sphere2;
-        static_cast<core::Sphere&>(*scene.hitables[2]) = sphere3;
-        static_cast<core::Sphere&>(*scene.hitables[3]) = sphere4;
+        while(current_samples < 1)
+        {
+        }
     }
     ImGui::End();
 }
@@ -349,7 +403,7 @@ void Game::render()
 
     // Clear the screen. todo: move to window (like SFML) or the renderer (GL specific?)
     magic_function();
-    glClearColor(1.0f, 0.7f, 0.0f, 1.0f);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     magic_function();
     glClear(GL_COLOR_BUFFER_BIT);
     magic_function();
@@ -367,16 +421,16 @@ void Game::render()
 
     {
         texture->update([&](std::vector<core::Pixel>& pixels) {
+            if (current_samples <= 0)
+                return;
+
             std::scoped_lock lock(super_cool_mutex2);
             auto frame_copy = render_frame;
-            if (current_samples > 0)
+            for (std::size_t i = 0; i < frame_copy.pixels.size(); ++i)
             {
-                for (std::size_t i = 0; i < frame_copy.pixels.size(); ++i)
-                {
-                    frame_copy.pixels[i].r /= static_cast<float>(current_samples);
-                    frame_copy.pixels[i].g /= static_cast<float>(current_samples);
-                    frame_copy.pixels[i].b /= static_cast<float>(current_samples);
-                }
+                frame_copy.pixels[i].r /= static_cast<float>(current_samples);
+                frame_copy.pixels[i].g /= static_cast<float>(current_samples);
+                frame_copy.pixels[i].b /= static_cast<float>(current_samples);
             }
             frame_copy.toPixels(pixels);
         });
@@ -461,7 +515,14 @@ void Game::raytrace()
         pool.wait_all();
 
         std::scoped_lock lock(super_cool_mutex2);
-        render_frame = update_frame;
-        current_samples++;
+        if (skip)
+        {
+            skip = false;
+        }
+        else
+        {
+            render_frame = update_frame;
+            current_samples++;
+        }
     }
 }
